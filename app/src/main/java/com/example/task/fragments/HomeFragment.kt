@@ -1,5 +1,6 @@
 package com.example.task.fragments
 
+import android.content.Intent
 import android.os.Bundle
 import android.util.Log
 import android.view.LayoutInflater
@@ -7,13 +8,16 @@ import android.view.View
 import android.view.ViewGroup
 import android.widget.HorizontalScrollView
 import android.widget.ImageView
+import android.widget.ProgressBar
 import android.widget.SearchView
 import android.widget.TextView
+import androidx.core.view.isVisible
 import androidx.fragment.app.Fragment
 import androidx.recyclerview.widget.GridLayoutManager
 import androidx.recyclerview.widget.RecyclerView
-import com.bumptech.glide.Glide
-import com.example.task.R
+import com.example.task.DetailsActivity
+import com.example.task.RecyclerView.ImageAdapter
+import com.example.task.RecyclerView.ItemClickListener
 import com.example.task.databinding.FragmentHomeBinding
 import com.google.android.material.chip.Chip
 import retrofit2.Call
@@ -21,14 +25,12 @@ import retrofit2.Callback
 import retrofit2.Response
 import retrofit2.Retrofit
 import retrofit2.converter.gson.GsonConverterFactory
-import retrofit2.http.GET
-import retrofit2.http.Header
-import retrofit2.http.Path
-import retrofit2.http.Query
+import com.example.task.pexelsapi.dataclases.*
+import com.example.task.pexelsapi.PexelsApiService
 
 class HomeFragment : Fragment() {
 
-    private var API_KEY = "my_api_key"
+    private var API_KEY = "api_key"
 
 
     private lateinit var binding: FragmentHomeBinding
@@ -40,6 +42,7 @@ class HomeFragment : Fragment() {
     private lateinit var exploreButton: TextView
     private lateinit var exploreText: TextView
     private lateinit var chipListView: HorizontalScrollView
+    private lateinit var progressBar: ProgressBar
 
     private lateinit var chip1: Chip
     private lateinit var chip2: Chip
@@ -80,6 +83,14 @@ class HomeFragment : Fragment() {
         setChipListener(chip7, 6)
     }
 
+    private fun showLoading() {
+        progressBar.isVisible = true
+    }
+
+    private fun hideLoading() {
+        progressBar.isVisible = false
+    }
+
     override fun onCreateView(
         inflater: LayoutInflater, container: ViewGroup?,
         savedInstanceState: Bundle?
@@ -104,7 +115,9 @@ class HomeFragment : Fragment() {
     }
     private fun getPhoto(position: Int) {
         val id = imagesIDs[position]
-        Log.d("RecyclerViewClick", "Clicked item ID: $id")
+        val intent = Intent(requireContext(), DetailsActivity::class.java)
+        intent.putExtra("imageId", id)
+        startActivity(intent)
     }
 
     private fun initUIComponents() {
@@ -128,6 +141,8 @@ class HomeFragment : Fragment() {
         exploreButton = binding.exploreTextButton
         tryAgainButton = binding.tryAgainButton
         chipListView = binding.itemScrollView
+        progressBar = binding.progressBar
+        progressBar.isVisible = false
 
         chip1 = binding.chip
         chip2 = binding.chip2
@@ -304,104 +319,4 @@ class HomeFragment : Fragment() {
         getChipNames()
     }
 
-    data class Image(
-        val imageUrl: String,
-    )
-
-    interface PexelsApiService {
-        @GET("curated")
-        fun getCuratedImages(
-            @Header("Authorization") apiKey: String,
-            @Query("page") page: Int,
-            @Query("per_page") perPage: Int
-        ): Call<PexelsResponse>
-
-        @GET("collections/featured")
-        fun getFeaturedCollections(
-            @Header("Authorization") apiKey: String,
-            @Query("page") page: Int,
-            @Query("per_page") perPage: Int
-        ): Call<FeaturedCollectionsResponse>
-
-        @GET("collections/{id}")
-        fun getCollectionMedia(
-            @Header("Authorization") apiKey: String,
-            @Path("id") id: String,
-            @Query("page") page: Int,
-            @Query("per_page") perPage: Int
-        ): Call<CollectionMediaResponse>
-    }
-
-    data class FeaturedCollectionsResponse(
-        val collections: List<FeaturedCollection>
-    )
-
-    data class FeaturedCollection(
-        val id: String,
-        val title: String,
-    )
-
-    data class PexelsResponse(
-        val photos: List<Photo>
-    )
-
-    data class Photo(
-        val id: Int,
-        val src: Src
-    )
-
-    data class CollectionMediaResponse(
-        val id: String,
-        val media: List<MediaItem>
-    )
-
-    data class MediaItem(
-        val id: Int,
-        val type: String,
-        val src: Src,
-        val image: String
-    )
-
-    data class Src(
-        val original: String
-    )
-
-    inner class ImageAdapter : RecyclerView.Adapter<ImageViewHolder>() {
-
-        private val images = mutableListOf<String>()
-        private var itemClickListener: ItemClickListener? = null
-        fun updateImages(newImages: List<String>) {
-            images.clear()
-            images.addAll(newImages)
-            notifyDataSetChanged()
-        }
-        fun setItemClickListener(listener: ItemClickListener) {
-            this.itemClickListener = listener
-        }
-
-        override fun onCreateViewHolder(parent: ViewGroup, viewType: Int): ImageViewHolder {
-            val itemView = LayoutInflater.from(parent.context)
-                .inflate(R.layout.item_image, parent, false)
-            return ImageViewHolder(itemView)
-        }
-
-        override fun onBindViewHolder(holder: ImageViewHolder, position: Int) {
-            val imageUrl = images[position]
-            Glide.with(holder.itemView.context).load(imageUrl).into(holder.imageView)
-            holder.itemView.setOnClickListener {
-                itemClickListener?.onItemClick(position)
-            }
-        }
-
-        override fun getItemCount(): Int {
-            return images.size
-        }
-
-    }
-    interface ItemClickListener {
-        fun onItemClick(position: Int)
-    }
-    inner class ImageViewHolder(itemView: View) : RecyclerView.ViewHolder(itemView) {
-        val imageView: ImageView = itemView.findViewById(R.id.imageView)
-    }
 }
